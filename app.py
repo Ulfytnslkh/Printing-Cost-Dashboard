@@ -90,7 +90,7 @@ if uploaded_file:
 
     top_dept = (
         dept.sort_values("TOTAL_COST", ascending=False)
-        .head(10)
+        .head(20)
         .set_index("DEPARTMENT")
     )
 
@@ -100,4 +100,5 @@ if uploaded_file:
     st.subheader("Insight & Recommendation")
 
     for text in generate_insight(monthly, dept):
+
         st.markdown(f"- {text}")
