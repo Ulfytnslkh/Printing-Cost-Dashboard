@@ -1,5 +1,4 @@
 import streamlit as st
-import plotly.express as px
 
 from data_loader import load_data
 from analyzer import prepare_summary
@@ -71,25 +70,17 @@ if uploaded_file:
     k4.metric("Total Cost", f"Rp{int(monthly['TOTAL_COST'].sum()):,}")
     
     st.subheader("Cost Trend per Month")
-    fig = px.line(
-        monthly,
-        x="PERIOD",
-        y=["BW_COST", "COLOR_COST", "TOTAl_COST"],
-        category_orders={
-            "PERIOD":[
-                "January","February","March","April","Mey","June","July","August","September","October","November","Desember"]
-        }
+    st.line_chart(
+        monthly.set_index("PERIOD")[
+            ["BW_COST", "COLOR_COST", "TOTAL_COST"]
+        ]
     )
 
     st.subheader("Halaman yang digunakan perbulan")
-    fig = px.line(
-        monthly,
-        x="PERIOD",
-        y=["BW_PAGES", "COLOR_PAGES"],
-        category_orders={
-            "PERIOD":[
-                 "January","February","March","April","Mey","June","July","August","September","October","November","Desember"]
-        }
+    st.bar_chart(
+        monthly.set_index("PERIOD")["January","February","March","April","Mey","June","July","August","September","October","November","Desember"
+            ["BW_PAGES", "COLOR_PAGES"]
+        ]
     )
 
     st.subheader("Ringkasan Bulanan")
@@ -109,5 +100,4 @@ if uploaded_file:
 
     for text in generate_insight(monthly, dept):
         st.markdown(f"- {text}")
-
 
