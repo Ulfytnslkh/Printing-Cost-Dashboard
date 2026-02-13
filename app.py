@@ -73,7 +73,7 @@ if uploaded_file:
     st.subheader("Cost Trend per Month")
     fig = px.line(
         monthly,
-        x="PERIODE",
+        x="PERIOD",
         y=["BW_COST", "COLOR_COST", "TOTAl_COST"],
         category_orders={
             "PERIOD":[
@@ -109,4 +109,5 @@ if uploaded_file:
 
     for text in generate_insight(monthly, dept):
         st.markdown(f"- {text}")
+
 
