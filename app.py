@@ -78,7 +78,7 @@ if uploaded_file:
 
     st.subheader("Halaman yang digunakan perbulan")
     st.bar_chart(
-        monthly.set_index("PERIOD")["January","February","March","April","Mey","June","July","August","September","October","November","Desember"
+        monthly.set_index("PERIOD")[
             ["BW_PAGES", "COLOR_PAGES"]
         ]
     )
@@ -100,4 +100,5 @@ if uploaded_file:
 
     for text in generate_insight(monthly, dept):
         st.markdown(f"- {text}")
+
 
