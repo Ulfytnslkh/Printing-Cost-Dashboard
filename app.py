@@ -1,104 +1,73 @@
-import streamlit as st
+import pandas as pd
 
-from data_loader import load_data
-from analyzer import prepare_summary
-from ai_analysis import generate_insight
+MONTH_ORDER = [
+    "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+    "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
+]
 
-st.set_page_config(
-    page_title="Printing Cost Dashboard",
-    layout="wide"
-)
+def prepare_summary(
+    df,
+    col_month,
+    col_dept,
+    col_bw,
+    col_color,
+    bw_price,
+    color_price
+):
+    df = df.copy()
 
-st.title("Dashboard Biaya Printing")
-
-uploaded_file = st.file_uploader(
-    "Upload file Excel", type=["xlsx", "xls"]
-)
-
-if uploaded_file:
-    df = load_data(uploaded_file)
-
-    st.subheader("Mapping Kolom")
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        col_month = st.selectbox(
-            "Kolom Bulan", df.columns
-        )
-    with col2:
-        col_dept = st.selectbox(
-            "Kolom Departemen", df.columns
-        )
-    with col3:
-        col_bw = st.selectbox(
-            "Kolom BW Pages", df.columns
-        )
-    with col4:
-        col_color = st.selectbox(
-            "Kolom Color Pages", df.columns
-        )
-
-    st.subheader("Harga per Halaman")
-
-    h1, h2 = st.columns(2)
-    with h1:
-        bw_price = st.number_input(
-            "Harga BW / halaman", value=110
-        )
-    with h2:
-        color_price = st.number_input(
-            "Harga Color / halaman", value=1300
-        )
-
-    raw_df, monthly, dept = prepare_summary(
-        df,
-        col_month,
-        col_dept,
-        col_bw,
-        col_color,
-        bw_price,
-        color_price
+    df[col_month] = (
+        df[col_month]
+        .astype(str)
+        .str.strip()      # hapus spasi depan/belakang
+        .str.upper()      # kapital
     )
 
-    st.subheader("Ringkasan Utama")
+    df[col_bw] = pd.to_numeric(df[col_bw], errors="coerce").fillna(0)
+    df[col_color] = pd.to_numeric(df[col_color], errors="coerce").fillna(0)
 
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Total Pages", f"{int(monthly['TOTAL_PAGES'].sum()):,}")
-    k2.metric("BW Pages", f"{int(monthly['BW_PAGES'].sum()):,}")
-    k3.metric("Color Pages", f"{int(monthly['COLOR_PAGES'].sum()):,}")
-    k4.metric("Total Cost", f"Rp{int(monthly['TOTAL_COST'].sum()):,}")
-    
-    st.subheader("Cost Trend per Month")
-    st.line_chart(
-        monthly.set_index("PERIOD")[
-            ["BW_COST", "COLOR_COST", "TOTAL_COST"]
+    df["BW_PAGES"] = df[col_bw]
+    df["COLOR_PAGES"] = df[col_color]
+    df["TOTAL_PAGES"] = df["BW_PAGES"] + df["COLOR_PAGES"]
+
+    df["BW_COST"] = df["BW_PAGES"] * bw_price
+    df["COLOR_COST"] = df["COLOR_PAGES"] * color_price
+    df["TOTAL_COST"] = df["BW_COST"] + df["COLOR_COST"]
+
+    monthly = (
+        df.groupby(col_month)[
+            [
+                "BW_PAGES",
+                "COLOR_PAGES",
+                "TOTAL_PAGES",
+                "BW_COST",
+                "COLOR_COST",
+                "TOTAL_COST",
+            ]
         ]
+        .sum()
+        .reset_index()
+        .rename(columns={col_month: "PERIOD"})
     )
 
-    st.subheader("Halaman yang digunakan perbulan")
-    st.bar_chart(
-        monthly.set_index("PERIOD")[
-            ["BW_PAGES", "COLOR_PAGES"]
+    monthly = monthly[monthly["PERIOD"].isin(MONTH_ORDER)]
+
+    monthly["PERIOD"] = pd.Categorical(
+        monthly["PERIOD"],
+        categories=MONTH_ORDER,
+        ordered=True
+    )
+    monthly = monthly.sort_values("PERIOD")
+
+    dept = (
+        df.groupby(col_dept)[
+            ["BW_PAGES", "COLOR_PAGES", "TOTAL_PAGES", "TOTAL_COST"]
         ]
+        .sum()
+        .reset_index()
+        .rename(columns={col_dept: "DEPARTMENT"})
     )
 
-    st.subheader("Ringkasan Bulanan")
-    st.dataframe(monthly)
+    dept = dept[dept["DEPARTMENT"].notna() & (dept["DEPARTMENT"] != "")]
 
-    st.subheader("Analisis Departemen")
-
-    top_dept = (
-        dept.sort_values("TOTAL_COST", ascending=False)
-        .head(20)
-        .set_index("DEPARTMENT")
-    )
-
-    st.bar_chart(top_dept["TOTAL_COST"])
-    st.dataframe(dept)
-
-    st.subheader("Insight & Recommendation")
-
-    for text in generate_insight(monthly, dept):
-
-        st.markdown(f"- {text}")
+    return df, monthly, dept
