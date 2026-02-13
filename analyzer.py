@@ -5,6 +5,8 @@ MONTH_ORDER = [
     "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
 ]
 
+MONTH_INDEX = {month: i for i, month in enumerate(MONTH_ORDER, start=1)}
+
 def prepare_summary(
     df,
     col_month,
@@ -14,14 +16,17 @@ def prepare_summary(
     bw_price,
     color_price
 ):
+   
     df = df.copy()
 
     df[col_month] = (
         df[col_month]
         .astype(str)
-        .str.strip()      # hapus spasi depan/belakang
-        .str.upper()      # kapital
+        .str.strip()
+        .str.upper()
     )
+
+    df = df[df[col_month].isin(MONTH_ORDER)]
 
     df[col_bw] = pd.to_numeric(df[col_bw], errors="coerce").fillna(0)
     df[col_color] = pd.to_numeric(df[col_color], errors="coerce").fillna(0)
@@ -50,14 +55,13 @@ def prepare_summary(
         .rename(columns={col_month: "PERIOD"})
     )
 
-    monthly = monthly[monthly["PERIOD"].isin(MONTH_ORDER)]
+    monthly["MONTH_INDEX"] = monthly["PERIOD"].map(MONTH_INDEX)
 
-    monthly["PERIOD"] = pd.Categorical(
-        monthly["PERIOD"],
-        categories=MONTH_ORDER,
-        ordered=True
-    )
-    monthly = monthly.sort_values("PERIOD")
+    monthly = monthly[monthly["TOTAL_PAGES"] > 0]
+
+    monthly = monthly.sort_values("MONTH_INDEX")
+
+    monthly = monthly.reset_index(drop=True)
 
     dept = (
         df.groupby(col_dept)[
@@ -68,6 +72,8 @@ def prepare_summary(
         .rename(columns={col_dept: "DEPARTMENT"})
     )
 
-    dept = dept[dept["DEPARTMENT"].notna() & (dept["DEPARTMENT"] != "")]
+    dept = dept[dept["TOTAL_PAGES"] > 0]
+
+    dept = dept.sort_values("TOTAL_PAGES", ascending=False).reset_index(drop=True)
 
     return df, monthly, dept
